@@ -66,43 +66,14 @@ class LiningDiaozemin : public StochasticModel {
    *               white noise per set of model parameters
    * @param[in] truncate Boolean indicating whether to truncate and baseline correct
    *               synthetic motion
-   */
-  LiningDiaozemin(FaultType2 faulting, SimulationType2 simulation_type,
-                       double moment_magnitude, double depth_to_rupt,
-                       double rupture_distance, double vs30, double s_or_d,
-                       double theta_or_phi, unsigned int num_sims,
-                       unsigned int num_realizations, bool truncate);
-
-  /**
-   * @constructor Construct near-fault ground motion model based on input
-   * parameters
-   * @param[in] faulting Type of faulting
-   * @param[in] simulation_type Pulse-type of simulation
-   * @param[in] moment_magnitude Moment magnitude of earthquake
-   * @param[in] depth_to_rupt Depth to the top of the rupture plane in
-   *               kilometers
-   * @param[in] rupture_distance Closest distance from the site to the fault
-   *               rupture in kilometers
-   * @param[in] vs30 Soil shear wave velocity averaged over top 30 meters in
-   *               meters per second
-   * @param[in] s_or_d Directivity parameter s or d (km)--input the larger of
-   *               the two
-   * @param[in] theta_or_phi Directivity ange parameter theta or phi
-   *               (degrees)--input corresponding value to s or d
-   * @param[in] num_sims Number of simulated ground motion time histories that
-   *               should be generated (number of different model parameter realizations)
-   * @param[in] num_realizations Number of realizations of non-stationary, modulated, filtered
-   *               white noise per set of model parameters
-   * @param[in] truncate Boolean indicating whether to truncate and baseline correct
-   *               synthetic motion
    * @param[in] seed_value Value to seed random variables with to ensure
    *               repeatability
    */
   LiningDiaozemin(FaultType2 faulting, SimulationType2 simulation_type,
                        double moment_magnitude, double depth_to_rupt,
                        double rupture_distance, double vs30, double s_or_d,
-                       double theta_or_phi, unsigned int num_sims,
-                       unsigned int num_realizations, bool truncate, int seed_value);
+                       unsigned int num_sims, unsigned int num_realizations, 
+                       bool truncate, int seed_value);
 
   /**
    * @destructor Virtual destructor

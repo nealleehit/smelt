@@ -530,7 +530,7 @@ TEST_CASE("Test Lining & Diaozemin implementation", "[Stochastic][Seismic]") {
 
   stochastic::LiningDiaozemin test_model(
       faulting, simulation_type, moment_magnitude, depth_to_rupt, rupture_dist,
-      vs30, s_or_d, theta_or_phi, num_sims, num_realizations, truncate);
+      vs30, s_or_d, num_sims, num_realizations, truncate, 999);
 
   SECTION("Test transformed model parameters calculation and tranformation "
           "back to normal space") {
@@ -716,6 +716,6 @@ TEST_CASE("Test Lining & Diaozemin implementation", "[Stochastic][Seismic]") {
   }
   
   SECTION("Test JSON generation") {
-    bool success = test_model.generate("hello and hello", "./li_diao_test.json", true);
+    bool success = test_model.generate("hello", "./li_diao_test.json", true);
   }
 }
