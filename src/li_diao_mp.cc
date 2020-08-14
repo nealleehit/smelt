@@ -16,7 +16,7 @@
 #include <Eigen/Dense>
 
 #include "beta_dist.h"
-#include "li_diao.h"
+#include "li_diao_mp.h"
 #include "factory.h"
 #include "function_dispatcher.h"
 #include "json_object.h"
@@ -25,11 +25,12 @@
 #include "normal_multivar.h"
 #include "numeric_utils.h"
 
-stochastic::LiningDiaozemin::LiningDiaozemin(
-    stochastic::FaultType2 faulting, stochastic::SimulationType2 simulation_type,
+stochastic::LiningDiaozemin_MP::LiningDiaozemin_MP(
+    stochastic::FaultType faulting, stochastic::SimulationType simulation_type,
     double moment_magnitude, double depth_to_rupt, double rupture_distance,
     double vs30, double s_or_d, unsigned int num_sims,
-    unsigned int num_realizations, bool truncate, int seed_value)
+    unsigned int num_realizations, bool truncate, int seed_value,
+    int pos, stochastic::CohType coh_type)
     : StochasticModel(),
       faulting_{faulting},
       sim_type_{simulation_type},
@@ -41,24 +42,48 @@ stochastic::LiningDiaozemin::LiningDiaozemin(
       truncate_{truncate},
       num_realizations_{num_realizations},
       seed_value_{seed_value},
+      pos_ {pos},
+      coh_type_ {coh_type},
       time_step_{0.005}
 {
-  model_name_ = "LiningDiaozemin";
+  model_name_ = "LiningDiaozemin_MP";
 
   switch (sim_type_) {
-    case stochastic::SimulationType2::NoPulse:
+    case stochastic::SimulationType::NoPulse:
       num_sims_pulse_ = 0;
       break;
 
-    case stochastic::SimulationType2::Pulse:
+    case stochastic::SimulationType::Pulse:
       num_sims_pulse_ = num_sims;
       break;
 
-    case stochastic::SimulationType2::PulseAndNoPulse:
+    case stochastic::SimulationType::PulseAndNoPulse:
       num_sims_pulse_ = simulate_pulse_type(num_sims);
       break;
   }
   
+  switch (coh_type_) {
+    case stochastic::CohType::FengHu:
+      //;
+      break;
+
+    case stochastic::CohType::HarichandranVanmarcke:
+      //num_sims_pulse_ = num_sims;
+      break;
+
+    case stochastic::CohType::LohYeh:
+      //num_sims_pulse_ = simulate_pulse_type(num_sims);
+      break;
+    case stochastic::CohType::QuTJ:
+      // num_sims_pulse_ = simulate_pulse_type(num_sims);
+      break;
+    case stochastic::CohType::HaoH:
+      // num_sims_pulse_ = simulate_pulse_type(num_sims);
+      break;
+    case stochastic::CohType::Nakamura:
+      // num_sims_pulse_ = simulate_pulse_type(num_sims);
+      break;
+  }
   num_sims_nopulse_ = num_sims - num_sims_pulse_;
 
   // Initialize multivariate normal generator without seed
@@ -182,7 +207,7 @@ stochastic::LiningDiaozemin::LiningDiaozemin(
   // clang-format on
 }
 
-utilities::JsonObject stochastic::LiningDiaozemin::generate(
+utilities::JsonObject stochastic::LiningDiaozemin_MP::generate(
     const std::string& event_name, bool units) {
 
   // Create vectors for pulse-like and non-pulse-like motions
@@ -300,7 +325,7 @@ utilities::JsonObject stochastic::LiningDiaozemin::generate(
       convert_time_history_units(pulse_motions_comp1[i][j], units);
       convert_time_history_units(pulse_motions_comp2[i][j], units);
 
-      // Add time histories for x and y directions to event
+      // Add time histories for x and z directions to event
       auto time_history_x = utilities::JsonObject();
       auto time_history_z = utilities::JsonObject();
       time_history_x.add_value("name", "accel_x");
@@ -318,8 +343,6 @@ utilities::JsonObject stochastic::LiningDiaozemin::generate(
     }
   }
   
-
-
   // Loop over different simulations for parameter sets non-pulse-like
   // motions
   for (unsigned int i = 0; i < num_sims_nopulse_; ++i) {
@@ -363,7 +386,7 @@ utilities::JsonObject stochastic::LiningDiaozemin::generate(
   return events;
 }
 
-bool stochastic::LiningDiaozemin::generate(
+bool stochastic::LiningDiaozemin_MP::generate(
     const std::string& event_name, const std::string& output_location,
     bool units) {
   bool status = true;
@@ -381,19 +404,19 @@ bool stochastic::LiningDiaozemin::generate(
   return status;  
 }
 
-unsigned int stochastic::LiningDiaozemin::simulate_pulse_type(
+unsigned int stochastic::LiningDiaozemin_MP::simulate_pulse_type(
     unsigned int num_sims) const {
   double pulse_probability = 0.0;
 
   // Calculate pulse probability for any type of pulse
-  if (faulting_ == stochastic::FaultType2::StrikeSlip) {
+  if (faulting_ == stochastic::FaultType::StrikeSlip) {
     pulse_probability = 1.0 / (1.0 + std::exp(0.457 + 0.126 * rupture_dist_ -
-                                              0.244 * std::sqrt(s_or_d_) +
-                                              0.013 * theta_or_phi_));
+                              0.244 * std::sqrt(s_or_d_) +
+                              0.013 * 0.0)); //0.013 * theta_or_phi_));
   } else {
     pulse_probability = 1.0 / (1.0 + std::exp(0.304 + 0.072 * rupture_dist_ -
-                                              0.208 * std::sqrt(s_or_d_) +
-                                              0.021 * theta_or_phi_));
+                              0.208 * std::sqrt(s_or_d_) +
+                              0.021 * 0.0));   // 0.021 * theta_or_phi_));
   }
 
   // Create random generator for uniform distribution between 0.0 and 1.0
@@ -419,7 +442,7 @@ unsigned int stochastic::LiningDiaozemin::simulate_pulse_type(
   return number_of_pulses;
 }
 
-Eigen::MatrixXd stochastic::LiningDiaozemin::simulate_model_parameters(
+Eigen::MatrixXd stochastic::LiningDiaozemin_MP::simulate_model_parameters(
     bool pulse_like, unsigned int num_sims) {
   // Calculate covariance matrix
   Eigen::MatrixXd error_cov =
@@ -489,13 +512,13 @@ Eigen::MatrixXd stochastic::LiningDiaozemin::simulate_model_parameters(
 }
 
 Eigen::VectorXd
-    stochastic::LiningDiaozemin::compute_transformed_model_parameters(
+    stochastic::LiningDiaozemin_MP::compute_transformed_model_parameters(
         bool pulse_like) const {
   // Calculate parameters and create parameter vector
   double depth_parameter = depth_to_rupt_ < 1.0 ? depth_to_rupt_ : 1.0;
   double site_parameter = vs30_ <= 1100.0 ? std::log(vs30_) : std::log(1100.0);
   double fault_parameter =
-      faulting_ == stochastic::FaultType2::StrikeSlip ? 0.0 : 1.0;
+      faulting_ == stochastic::FaultType::StrikeSlip ? 0.0 : 1.0;
 
   Eigen::VectorXd params_vector(8);
   params_vector << 1.0, moment_magnitude_,
@@ -518,7 +541,7 @@ Eigen::VectorXd
   }
 }
 
-void stochastic::LiningDiaozemin::transform_parameters_from_normal_space(
+void stochastic::LiningDiaozemin_MP::transform_parameters_from_normal_space(
     bool pulse_like, Eigen::VectorXd& parameters) {
   Eigen::VectorXd transformed_params(parameters.size());
   auto standard_normal =
@@ -650,12 +673,12 @@ void stochastic::LiningDiaozemin::transform_parameters_from_normal_space(
   parameters = transformed_params;
 }
 
-double stochastic::LiningDiaozemin::inv_double_exp(
+double stochastic::LiningDiaozemin_MP::inv_double_exp(
     double probability, double param_a, double param_b, double param_c,
     double lower_bound) const {
   if (probability < 0.0 || probability > 1.0) {
     throw std::runtime_error(
-        "\nERROR: in stochastic::DabaghiDerKiureghian::inv_double_exp: "
+        "\nERROR: in stochastic::LiningDiaozemin::inv_double_exp: "
         "Probability argument less than 0.0 or greater than 1.0\n");
   }
 
@@ -673,7 +696,7 @@ double stochastic::LiningDiaozemin::inv_double_exp(
   return location_inv;
 }
 
-void stochastic::LiningDiaozemin::simulate_near_fault_ground_motion(
+void stochastic::LiningDiaozemin_MP::simulate_near_fault_ground_motion(
     bool pulse_like, const Eigen::VectorXd& parameters,
     std::vector<std::vector<double>>& accel_comp_1,
     std::vector<std::vector<double>>& accel_comp_2,
@@ -819,7 +842,7 @@ void stochastic::LiningDiaozemin::simulate_near_fault_ground_motion(
   }
 }
 
-Eigen::VectorXd stochastic::LiningDiaozemin::backcalculate_modulating_params(
+Eigen::VectorXd stochastic::LiningDiaozemin_MP::backcalculate_modulating_params(
         const Eigen::VectorXd& q_params, double t0) const {
   double arias_intensity = q_params(0) / 981,  // Convert from cm/s to g-s
     d595 = q_params(1), d05 = q_params(2),
@@ -830,7 +853,7 @@ Eigen::VectorXd stochastic::LiningDiaozemin::backcalculate_modulating_params(
   optimization::NelderMead minimizer(1e-10);
   std::vector<double> diffs(6);
   std::function<double(const std::vector<double>&)> error_function =
-      std::bind(&stochastic::LiningDiaozemin::calc_parameter_error, this,
+      std::bind(&stochastic::LiningDiaozemin_MP::calc_parameter_error, this,
                 std::placeholders::_1, d05, d030, d095, t0);
 
   // Iterate over starting points
@@ -873,7 +896,7 @@ Eigen::VectorXd stochastic::LiningDiaozemin::backcalculate_modulating_params(
   return parameters;
 }
 
-double stochastic::LiningDiaozemin::calc_parameter_error(
+double stochastic::LiningDiaozemin_MP::calc_parameter_error(
     const std::vector<double>& parameters, double d05_target,
     double d030_target, double d095_target, double t0) const {
   // Modulating function parameters
@@ -934,7 +957,7 @@ double stochastic::LiningDiaozemin::calc_parameter_error(
          std::pow(d095_target - d095_fit, 2);
 }
 
-Eigen::MatrixXd stochastic::LiningDiaozemin::simulate_white_noise(
+Eigen::MatrixXd stochastic::LiningDiaozemin_MP::simulate_white_noise(
     const Eigen::VectorXd& modulating_params,
     const Eigen::VectorXd& filter_params, unsigned int num_steps,
     unsigned int num_gms) const {
@@ -992,7 +1015,7 @@ Eigen::MatrixXd stochastic::LiningDiaozemin::simulate_white_noise(
   return filtered_white_noise;
 }
 
-std::vector<double> stochastic::LiningDiaozemin::calc_modulating_func(
+std::vector<double> stochastic::LiningDiaozemin_MP::calc_modulating_func(
     unsigned int num_steps, double t0,
     const Eigen::VectorXd& parameters) const {
 
@@ -1016,7 +1039,7 @@ std::vector<double> stochastic::LiningDiaozemin::calc_modulating_func(
   return mod_func_vals;
 }
 
-double stochastic::LiningDiaozemin::calc_time_to_intensity(
+double stochastic::LiningDiaozemin_MP::calc_time_to_intensity(
     const std::vector<double>& acceleration, double percentage) const {
   // Calculate cumulative energy in acceleration time series, which is
   // proportional to Arias intensity
@@ -1043,7 +1066,7 @@ double stochastic::LiningDiaozemin::calc_time_to_intensity(
              1);
 }
 
-std::vector<double> stochastic::LiningDiaozemin::calc_linear_filter(
+std::vector<double> stochastic::LiningDiaozemin_MP::calc_linear_filter(
     unsigned int num_steps, const Eigen::VectorXd& filter_params, double t01,
     double tmid, double t99) const {
   // Mininum frequency in Hz
@@ -1077,7 +1100,7 @@ std::vector<double> stochastic::LiningDiaozemin::calc_linear_filter(
   return filter_func;
 }
 
-Eigen::MatrixXd stochastic::LiningDiaozemin::calc_impulse_response_filter(
+Eigen::MatrixXd stochastic::LiningDiaozemin_MP::calc_impulse_response_filter(
     unsigned int num_steps, const std::vector<double>& input_filter,
     double zeta) const {
   Eigen::MatrixXd impulse_response =
@@ -1113,7 +1136,7 @@ Eigen::MatrixXd stochastic::LiningDiaozemin::calc_impulse_response_filter(
   return impulse_response;
 }
 
-std::vector<double> stochastic::LiningDiaozemin::filter_acceleration(
+std::vector<double> stochastic::LiningDiaozemin_MP::filter_acceleration(
     const Eigen::VectorXd& accel_history, double freq_corner,
     unsigned int filter_order) const {
 
@@ -1141,7 +1164,7 @@ std::vector<double> stochastic::LiningDiaozemin::filter_acceleration(
   return filtered_acc;
 }
 
-std::vector<double> stochastic::LiningDiaozemin::calc_pulse_acceleration(
+std::vector<double> stochastic::LiningDiaozemin_MP::calc_pulse_acceleration(
     unsigned int num_steps, const Eigen::VectorXd& parameters) const {
   double pulse_velocity = parameters(0);  
   double pulse_frequency = 1.0 / parameters(1);
@@ -1180,7 +1203,7 @@ std::vector<double> stochastic::LiningDiaozemin::calc_pulse_acceleration(
   return numeric_utils::derivative(velocity_history, 1.0 / (981.0 * time_step_), true);
 }
 
-void stochastic::LiningDiaozemin::truncate_time_histories(
+void stochastic::LiningDiaozemin_MP::truncate_time_histories(
     std::vector<std::vector<double>>& accel_comp_1,
     std::vector<std::vector<double>>& accel_comp_2, double gfactor,
     double amplitude_lim, double pgd_lim) const {
@@ -1297,7 +1320,7 @@ void stochastic::LiningDiaozemin::truncate_time_histories(
   }
 }
 
-void stochastic::LiningDiaozemin::baseline_correct_time_history(
+void stochastic::LiningDiaozemin_MP::baseline_correct_time_history(
     std::vector<double>& time_history, double gfactor,
     unsigned int order) const {
 
@@ -1343,7 +1366,7 @@ void stochastic::LiningDiaozemin::baseline_correct_time_history(
   }
 }
 
-void stochastic::LiningDiaozemin::convert_time_history_units(
+void stochastic::LiningDiaozemin_MP::convert_time_history_units(
     std::vector<double>& time_history, bool units) const {
   double conversion_factor = units ? 1.0 : 9.81;
  

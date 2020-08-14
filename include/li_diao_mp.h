@@ -1,5 +1,5 @@
-#ifndef _LI_DIAO_H_
-#define _LI_DIAO_H_
+#ifndef _LI_DIAO_MP_H_
+#define _LI_DIAO_MP_H_
 
 #include <functional>
 #include <memory>
@@ -10,25 +10,44 @@
 #include "json_object.h"
 #include "numeric_utils.h"
 #include "stochastic_model.h"
+#include "dabaghi_der_kiureghian.h"
 
 namespace stochastic {
 /** @enum stochastic::FaultType
  *  @brief is a strongly typed enum class representing the type of faulting
  */  
-enum class FaultType2 {
-  StrikeSlip, /**< Strike-slip fault */
-  ReverseAndRevObliq /**< Reverse or reverse-oblique fault */
-};
+//enum class FaultType2 {
+//  StrikeSlip, /**< Strike-slip fault */
+//  ReverseAndRevObliq /**< Reverse or reverse-oblique fault */
+//};
 
 /** @enum stochastic::SimulationType
  *  @brief is a strongly typed enum class representing pulse-like proportion
  *  of ground motion
  */  
-enum class SimulationType2 {
-  PulseAndNoPulse, /**< pulse-like and non-pulse-like motions in proportion predicted by Shahi and Baker(2014) */
-  Pulse, /**< only pulse-like */
-  NoPulse /**< only non-pulse-like */
-};
+//enum class SimulationType2 {
+//  PulseAndNoPulse, /**< pulse-like and non-pulse-like motions in proportion predicted by Shahi and Baker(2014) */
+//  Pulse, /**< only pulse-like */
+//  NoPulse /**< only non-pulse-like */
+//};
+
+/** @enum stochastic::SimulationType
+ *  @brief is a strongly typed enum class representing pulse-like proportion
+ *  of ground motion
+ */
+enum class CohType {
+ FengHu, /**< Coherence function proposed by FEng and Hu (1981) */ 
+ HarichandranVanmarcke,  /**< 1986 */ 
+ LohYeh, /**< 1988 */
+ QuTJ, /**<  */
+ HaoH, 
+ Nakamura, /**<1995 */
+  LucoWong, /*<1986*/
+  Somerville, /**/
+  Kiureghian, 
+  YangQS,
+  DingHP
+}; 
 
 /**
  * Stochastic model for simulating near-fault ground motions. Based on the following
@@ -37,12 +56,12 @@ enum class SimulationType2 {
  *   2. Dabaghi and Der Kiureghian (2017 EESD) "Stochastic model for simulation of NF GMs"
  *   3. Dabaghi and Der Kiureghian (2018 EESD) "Simulation of orthogonal horizontal components of near-fault ground motion for specified EQ source and site characteristics"
  */
-class LiningDiaozemin : public StochasticModel {
+class LiningDiaozemin_MP : public StochasticModel {
  public:
   /**
    * @constructor Default constructor
    */
-  LiningDiaozemin() = default;
+  LiningDiaozemin_MP() = default;
 
   /**
    * @constructor Construct near-fault ground motion model based on input
@@ -68,27 +87,28 @@ class LiningDiaozemin : public StochasticModel {
    *               synthetic motion
    * @param[in] seed_value Value to seed random variables with to ensure
    *               repeatability
+   * @param[in] cohtype
    */
-  LiningDiaozemin(FaultType2 faulting, SimulationType2 simulation_type,
+  LiningDiaozemin_MP(FaultType faulting, SimulationType simulation_type,
                        double moment_magnitude, double depth_to_rupt,
                        double rupture_distance, double vs30, double s_or_d,
                        unsigned int num_sims, unsigned int num_realizations, 
-                       bool truncate, int seed_value);
+                       bool truncate, int seed_value, int pos, CohType coh_type);
 
   /**
    * @destructor Virtual destructor
    */
-  virtual ~LiningDiaozemin(){};
+  virtual ~LiningDiaozemin_MP(){};
 
   /**
    * Delete copy constructor
    */
-  LiningDiaozemin(const LiningDiaozemin&) = delete;
+  LiningDiaozemin_MP(const LiningDiaozemin_MP&) = delete;
 
   /**
    * Delete assignment operator
    */
-  LiningDiaozemin& operator=(const LiningDiaozemin&) = delete;
+  LiningDiaozemin_MP& operator=(const LiningDiaozemin_MP&) = delete;
 
   /**
    * Generate ground motion time histories based on input parameters
@@ -348,21 +368,23 @@ class LiningDiaozemin : public StochasticModel {
                                   bool units) const;  
 
  private:
-  FaultType2 faulting_;     /**< Enum for type of faulting for scenario */
-  SimulationType2 sim_type_; /**< Enum for pulse-like nature of ground motion */
+  FaultType faulting_;     /**< Enum for type of faulting for scenario */
+  SimulationType sim_type_; /**< Enum for pulse-like nature of ground motion */
+  CohType coh_type_;         /**< Enum for cohuerence function of spatial GMs */
   double moment_magnitude_; /**< Moment magnitude for scenario */
   double depth_to_rupt_; /**< Depth to the top of the rupture plane (km) */
   double rupture_dist_; /**< Closest-to-site rupture distance in kilometers */
   double vs30_; /**< Soil shear wave velocity averaged over top 30 meters in
                    meters per second */
   double s_or_d_; /**< Directivity parameter s or d (km) */
-  double theta_or_phi_; /**< Directivity angle parameter theta or phi */
+//  double theta_or_phi_; /**< Directivity angle parameter theta or phi */
   bool truncate_; /**< Indicates whether to truncate and baseline correct motion */
   unsigned int num_sims_pulse_; /**< Number of pulse-like simulated ground
                              motion time histories that should be generated */
   unsigned int num_sims_nopulse_; /**< Number of no-pulse-like simulated ground
                              motion time histories that should be generated */
   unsigned int num_realizations_; /**< Number of realizations of model parameters */
+  int pos_;                       /**< Number of multiple input postions */
   int seed_value_; /**< Integer to seed random distributions with */
   double time_step_; /**< Temporal discretization. Set to 0.005 seconds */
   double start_time_ = 0.0; /**< Start time of ground motion */

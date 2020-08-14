@@ -2,7 +2,8 @@
 #include "beta_dist.h"
 #include "configure.h"
 #include "dabaghi_der_kiureghian.h"
-#include "li_diao.h"
+#include "li_diao_v_h.h"
+#include "li_diao_mp.h"
 #include "factory.h"
 #include "filter.h"
 #include "function_dispatcher.h"
@@ -72,10 +73,15 @@ void config::initialize() {
                   unsigned int, bool, int>
       dabaghi_der_kiureghian_seed("DabaghiDerKiureghianNFGM");
   static Register<stochastic::StochasticModel, stochastic::LiningDiaozemin,
-                  stochastic::FaultType2, stochastic::SimulationType2, double,
+                  stochastic::FaultType, stochastic::SimulationType, double,
                   double, double, double, double, unsigned int,
                   unsigned int, bool, int>
-      li_diao_seed("LiningDiaozemin");
+      li_diao_v_h("LiningDiaozemin_VH");
+  static Register<stochastic::StochasticModel, stochastic::LiningDiaozemin_MP,
+                  stochastic::FaultType, stochastic::SimulationType, double,
+                  double, double, double, double, unsigned int,
+                  unsigned int, bool, int, int, stochastic::CohType>
+      li_diao_mp("LiningDiaozemin_MP");
 
   // Wind
   static Register<stochastic::StochasticModel, stochastic::WittigSinha,
